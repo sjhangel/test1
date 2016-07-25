@@ -1,0 +1,290 @@
+<!DCOTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>定价模型</title>
+    <script src="echarts/esl.js"></script>
+    <script src="echarts/config.js"></script>
+</head>
+<body>
+    <div id="main" style="height:100%;"></div>
+    <script type="text/javascript">
+            
+        require(
+        [
+            'echarts',
+            'map/js/china',                      
+            'zrender/vml/vml'
+        ],
+            function (ec) {
+                var myChart = ec.init(document.getElementById("main"));
+                                
+                var geoCoordMap= {
+                    '政策因素': [105, 45],
+                    '经济因素': [103, 43],
+                    '周边配套': [101, 41],
+                    '交通条件': [102, 42],
+                    '人口变化':  [100, 40],
+                    '小区平均价格':[105,45],
+                    '楼层': [127, 43],
+                    '朝向': [125, 45],
+                    '景观':  [130, 40],
+                    '安静度': [128, 42],
+                    '住房结构':  [129, 41],
+                    '价格因子':[120,35],
+                    '评估价格':[105,30],
+                };     
+                var dataLine1 = [
+                    [{ name: '政策因素'}, { name: '小区平均价格', value: 90 }],                    
+                    [{ name: '经济因素'}, { name: '小区平均价格', value: 90 }],
+                    [{ name: '周边配套'}, { name: '小区平均价格', value: 90 }],
+                    [{ name: '交通条件'}, { name: '小区平均价格', value: 90 }],
+                    [{ name: '人口变化'}, { name: '小区平均价格', value: 90 }],
+                    [{ name: '楼层'}, { name: '价格因子', value: 90 }],
+                    [{ name: '朝向'}, { name: '价格因子', value: 90 }],
+                    [{ name: '景观'}, { name: '价格因子', value: 90 }],
+                    [{ name: '安静度'}, { name: '价格因子', value: 90 }],
+                    [{ name: '住房结构'}, { name: '价格因子', value: 90 }],
+                ];
+                var dataLine2=[
+                    [{ name: '小区平均价格'}, { name: '评估价格', value: 90 }],
+                ];
+                var dataPoint = [
+                    { name: '政策因素', value: 95 },
+                    { name: '经济因素', value: 95 },
+                    { name: '周边配套', value: 90 },
+                    { name: '交通条件', value: 80 },
+                    { name: '人口变化', value: 150 },
+                    { name: '小区平均价格', value: 150 },
+                    { name: '楼层', value: 150 },
+                    { name: '朝向', value: 150 },
+                    { name: '景观', value: 150 },
+                    { name: '安静度', value: 150 },
+                    { name: '住房结构', value: 150 },
+                    { name: '价格因子', value: 150 },
+                    { name: '评估价格', value: 150 },
+                ];
+                var N=128;
+                var addNode=function(node,r,M,L){                  
+                    
+                    if(((L-M)>1)&&L<=N){
+                        var dt=Math.sqrt(Math.pow((node[M][0]-node[L][0]),2)+Math.pow((node[M][1]-node[L][1]),2));
+                        var curve=(r-Math.sqrt(r*r-dt*dt/4))/dt;
+                        node[M/2+L/2][0]=(node[M][0]+node[L][0])/2-(node[M][1]-node[L][1])*curve;
+                        node[M/2+L/2][1]=(node[M][1]+node[L][1])/2-(node[L][0]-node[M][0])*curve;
+                        addNode(node,r,M,M/2+L/2);
+                        addNode(node,r,M/2+L/2,L);
+                    };                    
+                };                
+                var convertDataLineN = function (data,curveness) {
+                    var res = [];
+                    var Pi=3.1415927;
+                    for (var i = 0; i < data.length; i++) {
+                        var dataItem = data[i];
+                        var fromCoord = geoCoordMap[dataItem[0].name];
+                        var toCoord = geoCoordMap[dataItem[1].name];
+                        var node=[];                        
+                        for(var i=0;i<=N;i++){node[i]=new Array();};                        
+                        node[0]=fromCoord;
+                        node[N]=toCoord;       
+                        var d=Math.sqrt(Math.pow((node[0][0]-node[N][0]),2)+Math.pow((node[0][1]-node[N][1]),2));
+                        var r=d*curveness/2+d/(8*curveness);                     
+                        addNode(node,r,0,N);
+                        if (fromCoord && toCoord) {
+                            res.push({
+                                fromName: dataItem[0].name,
+                                toName: dataItem[1].name,
+                                coords: node,
+                            });
+                        }
+                    }
+                    return res;
+                };
+                
+                var convertDataLine = function (data) {
+                    var res = [];
+                    for (var i = 0; i < data.length; i++) {
+                        var dataItem = data[i];
+                        var fromCoord = geoCoordMap[dataItem[0].name];
+                        var toCoord = geoCoordMap[dataItem[1].name];
+                        if (fromCoord && toCoord) {
+                            res.push({
+                                fromName: dataItem[0].name,
+                                toName: dataItem[1].name,
+                                coords: [fromCoord, toCoord]
+                            });
+                        }
+                    }
+                    return res;
+                };
+                var convertData = function (data) {
+                    var res = [];
+                    for (var i = 0; i < data.length; i++) {
+                        var geoCoord = geoCoordMap[data[i].name];
+                        if (geoCoord) {
+                            res.push({
+                                name: data[i].name,
+                                value: geoCoord.concat(data[i].value)
+                            });
+                        }
+                    }
+                    return res;
+                };
+
+                option = {
+                    backgroundColor: '#1b1b1b',
+                    color: ['#fff', '#9687d9', '#70a0de', '#00c4aa', '#a9d351', '#dde04b', '#ffc338','#ff9151','#ff5d64'],
+                    title: {
+                        text: '抵押贷款定价模型',
+                        subtext: '',
+                        x: 'center',
+                        textStyle: {
+                            color: '#fff'
+                        }
+                    },
+                    legend: {
+                        orient: 'vertical',
+                        x: 'left',
+                        data: [],                       
+                        textStyle: {
+                            color: '#fff'
+                        }
+                    },                    
+                    geo: {
+                        map: 'china',
+                        left: 0,
+                        right: 0,
+                        silent: true,
+                        itemStyle: {
+                            normal: {
+                                borderColor: '#1b1b1b',
+                                color: '#1b1b1b'
+                            }
+                        }
+                    },
+                    series: [
+                        {
+                            name: 'label',
+                            type: 'effectScatter',
+                            coordinateSystem: 'geo',
+                            data: convertData(dataPoint),
+                            symbolSize: function (val) {
+                                return val[2] / 10;
+                            },
+                            label: {
+                                normal: {
+                                    formatter: '{b}',
+                                    position: 'right',
+                                    show: true
+                                },
+                                emphasis: {
+                                    show: true
+                                }
+                            },
+                            itemStyle: {
+                                normal: {
+                                    color: '#ddb926'
+                                }
+                            }
+                        },  
+                        {
+                            type: 'lines',
+                            coordinateSystem: 'geo',
+                            data: [],
+                            large: true,
+                            largeThreshold: 100,
+                            lineStyle: {
+                                normal: {
+                                    opacity: 0.05,
+                                    width: 1,
+                                    curveness: 0.4
+                                }
+                            },
+                            effect: {
+                                constantSpeed: 20,
+                                show: true,
+                                trailLength: 0.1,
+                                symbolSize: 1.5
+                            },
+                            zlevel:1,
+                            blendMode: 'lighter'      
+                        },                 
+                                 
+                        {
+                            type: 'lines',
+                            coordinateSystem: 'geo',
+                            data: convertDataLine(dataLine2),
+                            large: true,
+                            largeThreshold: 100,
+                            lineStyle: {
+                                normal: {
+                                    opacity: 0.05,
+                                    width: 1,
+                                    curveness: 0.9
+                                }
+                            },
+                            effect: {
+                                constantSpeed: 20,
+                                show: true,
+                                trailLength: 0.1,
+                                symbolSize: 1.5
+                            },
+                            zlevel:1,
+                            // 设置混合模式为叠加
+                            blendMode: 'lighter'      
+                        },
+                        {
+                            type: 'lines',
+                            coordinateSystem: 'geo',
+                            data: convertDataLineN(dataLine2,0.1),
+                            polyline:true,          //可以使用自定义的convertDataLineN
+                            large: true,
+                            largeThreshold: 100,
+                            lineStyle: {
+                                normal: {
+                                    opacity: 0.05,
+                                    width: 1,
+                                }
+                            },
+                            effect: {
+                                constantSpeed: 20,
+                                show: true,
+                                trailLength: 0.1,
+                                symbolSize: 1.5
+                            },
+                            zlevel:1,
+                            blendMode: 'lighter'      
+                        },
+                        {
+                            type: 'lines',
+                            coordinateSystem: 'geo',
+                            data: convertDataLine(dataLine2),
+                            large: true,
+                            largeThreshold: 100,
+                            lineStyle: {
+                                normal: {
+                                    opacity: 0.05,
+                                    width: 1,
+                                    curveness: 0.5
+                                }
+                            },
+                            effect: {
+                                constantSpeed: 20,
+                                show: true,
+                                trailLength: 0.1,
+                                symbolSize: 1.5
+                            },
+                            zlevel:1,
+                            blendMode: 'lighter'      
+                        },
+                    ]
+                               
+                };
+                myChart.setOption(option);
+                window.onresize = myChart.resize;
+            }
+        );
+    </script>
+</body>
+</html>
